@@ -188,3 +188,4 @@ export default async function session(
 
   return response
 }
+
