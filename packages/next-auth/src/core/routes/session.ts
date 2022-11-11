@@ -94,11 +94,20 @@ export default async function session(
         adapter as Adapter
       let userAndSession = await getSessionAndUser(sessionToken)
 
+      logger.debug("session endpoint", {
+        user: userAndSession,
+        now: Date.now()
+      });
       // If session has expired, clean up the database
       if (
         userAndSession &&
         userAndSession.session.expires.valueOf() < Date.now()
       ) {
+        logger.debug("deleting session from session endpoint", {
+          expires: userAndSession.session.expires,
+          expiresVal: userAndSession.session.expires.valueOf(),
+          now: Date.now()
+        });
         await deleteSession(sessionToken)
         userAndSession = null
       }
@@ -116,9 +125,22 @@ export default async function session(
           sessionUpdateAge * 1000
 
         const newExpires = fromDate(sessionMaxAge)
+        logger.debug("session endpoint expires info", {
+          sessionExpires: session.expires.valueOf(),
+          sessionUpdateAge,
+          sessionMaxAge,
+          sessionIsDueToBeUpdatedDate,
+          newExpires
+        });
         // Trigger update of session expiry date and write to database, only
         // if the session was last updated more than {sessionUpdateAge} ago
         if (sessionIsDueToBeUpdatedDate <= Date.now()) {
+          logger.debug("updating session", {
+            sessionIsDueToBeUpdatedDate,
+            now: Date.now(),
+            expires: newExpires,
+            expires2: session.expires.toISOString()
+          });
           await updateSession({ sessionToken, expires: newExpires })
         }
 
@@ -154,6 +176,7 @@ export default async function session(
         // @ts-expect-error
         await events.session?.({ session: sessionPayload })
       } else if (sessionToken) {
+        logger.debug("session endpoint clear", {});
         // If `sessionToken` was found set but it's not valid for a session then
         // remove the sessionToken cookie from browser.
         response.cookies?.push(...sessionStore.clean())
